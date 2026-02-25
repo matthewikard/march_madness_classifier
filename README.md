@@ -29,15 +29,71 @@ Training data spans 2019–2024 (excluding 2020), aligning with the committee's 
 | `quad_1_wins` | Total Quad 1 wins |
 | `bad_losses` | Combined Quad 3 + Quad 4 losses |
 
-## Usage
+## Setup
 
-Run the Jupyter notebook:
-
+1. Install dependencies:
 ```bash
-jupyter notebook march_madness_prediction.ipynb
+pip install -r requirements.txt
 ```
 
-**Requirements:** A KenPom premium subscription is needed to pull efficiency and strength of schedule data.
+2. Create a `.env` file with your KenPom credentials (see `.env.example`):
+```
+KENPOM_USER=your_email@example.com
+KENPOM_PASSWORD=your_password
+```
+
+A [KenPom](https://kenpom.com/) premium subscription is required.
+
+## Usage
+
+### 1. Scrape training data
+Scrapes historical data (2019–2024) from all sources and saves it to `data/training_data.csv`. Requires KenPom login:
+```bash
+python cli.py scrape
+```
+
+You only need to re-run this when new seasons finish or you want to refresh the training data.
+
+### 2. Train the model
+Trains the classifier from saved data and saves it to `models/model.joblib`. No KenPom login needed:
+```bash
+python cli.py train
+```
+
+Use `--no-plots` to skip the confusion matrix and feature importance charts:
+```bash
+python cli.py train --no-plots
+```
+
+To scrape fresh data and train in one step:
+```bash
+python cli.py train --scrape
+```
+
+### 3. Predict a tournament field
+Scrapes current-season data and predicts the 68-team field:
+```bash
+python cli.py predict 2026
+```
+
+Optionally specify a date for quad records (defaults to today):
+```bash
+python cli.py predict 2026 --date 2026-03-15
+```
+
+**Note:** If conference tournaments haven't been played yet, the model uses regular season conference leaders as the automatic qualifier proxy.
+
+## Project Structure
+
+```
+config.py       — Constants, feature list, team/conference name mappings
+scrapers.py     — Data scraping (KenPom, Sports Reference, Bracketologists, Wikipedia)
+features.py     — Data merging and feature engineering
+model.py        — Model training, persistence (joblib), and prediction
+cli.py          — Command-line interface
+data/           — Saved training data
+models/         — Saved model files
+```
 
 ## Dependencies
 
@@ -47,3 +103,5 @@ jupyter notebook march_madness_prediction.ipynb
 - beautifulsoup4
 - requests
 - kenpompy
+- python-dotenv
+- joblib
