@@ -225,7 +225,19 @@ def scrape_quad_records(dates):
                 'non_d1_record': records[5],
             })
 
+    # if no data was found, try the previous day (bracketologists.com
+    # may not have today's data yet)
+    if not all_data and len(dates) == 1:
+        from datetime import datetime, timedelta
+        original = datetime.strptime(dates[0], '%Y-%m-%d')
+        prev_date = (original - timedelta(days=1)).strftime('%Y-%m-%d')
+        print(f'  No quad data for {dates[0]}, trying {prev_date}...')
+        return scrape_quad_records([prev_date])
+
     df = pd.DataFrame(all_data)
+
+    if df.empty:
+        return df
 
     # normalize team names (State -> St., hyphens -> spaces, then mapping)
     df['team'] = df['team'].str.replace('State', 'St.', regex=False)
