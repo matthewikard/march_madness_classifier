@@ -14,6 +14,11 @@ FEATURES = [
     'bad_losses',
 ]
 
+# Features to convert to per-year percentile ranks.
+# Only absolute counts that grow over the season — ratios and ranks
+# are already comparable at any point.
+PERCENTILE_FEATURES = ['quad_1_wins', 'bad_losses']
+
 # --- Training config ---
 TRAINING_YEARS = [2019, 2021, 2022, 2023, 2024, 2025]
 

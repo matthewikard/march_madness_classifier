@@ -1,6 +1,6 @@
 import pandas as pd
 
-from config import POWER_CONFERENCES
+from config import POWER_CONFERENCES, PERCENTILE_FEATURES
 
 
 def build_dataset(kenpom_df, quad_df, champs_df, seeds_df=None):
@@ -85,4 +85,20 @@ def build_dataset(kenpom_df, quad_df, champs_df, seeds_df=None):
         + merged['quad_4_record'].str.split('-', expand=True).astype(int)[1]
     )
 
+    # convert count features to per-year percentile ranks so mid-season
+    # values are comparable to end-of-season training data
+    merged = _apply_percentile_ranking(merged, PERCENTILE_FEATURES)
+
     return merged
+
+
+def _apply_percentile_ranking(df, features):
+    """
+    Convert specified features to per-year percentile ranks (0–1).
+
+    Ties receive the average of their rank positions.
+    """
+    df = df.copy()
+    for col in features:
+        df[col] = df.groupby('year')[col].rank(pct=True, method='average')
+    return df
