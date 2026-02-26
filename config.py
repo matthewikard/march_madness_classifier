@@ -90,6 +90,42 @@ CONFERENCE_NAME_MAPPING = {
     'Coastal Athletic Association': 'CAA',
 }
 
+# --- Conference slug mapping (KenPom abbreviation -> sports-reference URL slug) ---
+CONFERENCE_SLUG_MAPPING = {
+    'B12': 'big-12',
+    'Amer': 'american',
+    'SEC': 'sec',
+    'BE': 'big-east',
+    'B10': 'big-ten',
+    'P12': 'pac-12',
+    'A10': 'atlantic-10',
+    'WCC': 'wcc',
+    'ACC': 'acc',
+    'MAC': 'mac',
+    'CAA': 'coastal',
+    'OVC': 'ovc',
+    'CUSA': 'cusa',
+    'MVC': 'mvc',
+    'Ivy': 'ivy',
+    'Slnd': 'southland',
+    'BSth': 'big-south',
+    'SB': 'sun-belt',
+    'PL': 'patriot',
+    'MWC': 'mwc',
+    'ASun': 'atlantic-sun',
+    'WAC': 'wac',
+    'BSky': 'big-sky',
+    'SC': 'southern',
+    'Horz': 'horizon',
+    'MAAC': 'maac',
+    'AE': 'america-east',
+    'Sum': 'summit',
+    'MEAC': 'meac',
+    'BW': 'big-west',
+    'NEC': 'nec',
+    'SWAC': 'swac',
+}
+
 # --- Unified team name mapping (any variant -> KenPom canonical name) ---
 # Consolidates all source-specific mappings from the notebook.
 # Applied AFTER the 'State' -> 'St.' replacement.

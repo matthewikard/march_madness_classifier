@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from kenpompy.utils import login
 from kenpompy.misc import get_pomeroy_ratings
 
-from config import CONFERENCE_NAME_MAPPING, TEAM_NAME_MAPPING, CONFERENCE_CHAMP_OVERRIDES
+from config import CONFERENCE_NAME_MAPPING, CONFERENCE_SLUG_MAPPING, TEAM_NAME_MAPPING, CONFERENCE_CHAMP_OVERRIDES
 
 _kenpom_browser = None
 
@@ -74,12 +74,14 @@ def scrape_conference_champions(years):
     Scrape conference tournament champions from sports-reference.com.
 
     Uses tournament champions (conf_champ_post). If no tournament champion
-    data exists at all for a year (e.g. mid-season), falls back to regular
-    season champions (conf_champ_reg) for that entire year.
+    data exists at all for a year (e.g. mid-season), falls back to scraping
+    individual conference standings pages for the current leader by conference
+    win percentage.
 
     Returns DataFrame with columns: year, conference, postseason_champion
     """
-    all_data = []
+    tourney_data = []
+    leaders_frames = []
 
     for year in years:
         url = f"https://www.sports-reference.com/cbb/seasons/men/{year}.html"
@@ -89,32 +91,96 @@ def scrape_conference_champions(years):
         conf_names = [tag.text.strip() for tag in soup.find_all("td", {"data-stat": "conf_name"})]
         tourney_champs = [tag.text.strip() for tag in soup.find_all("td", {"data-stat": "conf_champ_post"})]
 
-        # use tournament champs if any are populated, otherwise fall back
-        # to regular season champs (mid-season prediction case)
         has_tourney_data = any(c for c in tourney_champs)
         if has_tourney_data:
             for conf, champ in zip(conf_names, tourney_champs):
-                all_data.append((year, conf, champ))
+                tourney_data.append((year, conf, champ))
         else:
-            reg_season_champs = [tag.text.strip() for tag in soup.find_all("td", {"data-stat": "conf_champ_reg"})]
-            for conf, champ in zip(conf_names, reg_season_champs):
-                all_data.append((year, conf, champ))
+            # mid-season: scrape conference standings for current leaders
+            print(f'  No tournament data for {year}, scraping conference standings...')
+            leaders_frames.append(scrape_conference_leaders(year))
+
+    # process tournament champion data (full conference names, raw team names)
+    frames = []
+
+    if tourney_data:
+        df = pd.DataFrame(tourney_data, columns=['year', 'conference', 'postseason_champion'])
+        df = df[df['conference'] != 'Independent']
+        df['conference'] = df['conference'].map(CONFERENCE_NAME_MAPPING)
+        df['postseason_champion'] = _normalize_team_names(df['postseason_champion'])
+
+        for (override_year, conf), replacement in CONFERENCE_CHAMP_OVERRIDES.items():
+            mask = (df['year'] == override_year) & (df['conference'] == conf)
+            df.loc[mask, 'postseason_champion'] = replacement
+
+        frames.append(df)
+
+    # leaders data is already in KenPom format from scrape_conference_leaders
+    frames.extend(leaders_frames)
+
+    if frames:
+        return pd.concat(frames, ignore_index=True)
+
+    return pd.DataFrame(columns=['year', 'conference', 'postseason_champion'])
+
+
+def scrape_conference_leaders(year):
+    """
+    Scrape current conference standings from sports-reference.com to find
+    the team leading each conference by conference win percentage.
+
+    Used as a mid-season fallback when conference tournament champions
+    are not yet determined.
+
+    Returns DataFrame with columns: year, conference, postseason_champion
+    """
+    all_data = []
+
+    for kenpom_abbr, slug in CONFERENCE_SLUG_MAPPING.items():
+        url = f"https://www.sports-reference.com/cbb/conferences/{slug}/men/{year}.html"
+        try:
+            response = requests.get(url)
+            if response.status_code != 200:
+                continue
+        except requests.RequestException:
+            continue
+
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        best_team = None
+        best_pct = -1.0
+
+        for row in soup.find_all("tr"):
+            school_cell = row.find("td", {"data-stat": "school_name"})
+            wins_cell = row.find("td", {"data-stat": "conf_w"})
+            losses_cell = row.find("td", {"data-stat": "conf_l"})
+
+            if not school_cell or not wins_cell or not losses_cell:
+                continue
+
+            team = school_cell.get_text(strip=True)
+            try:
+                wins = int(wins_cell.get_text(strip=True))
+                losses = int(losses_cell.get_text(strip=True))
+            except ValueError:
+                continue
+
+            total = wins + losses
+            if total == 0:
+                continue
+
+            pct = wins / total
+            if pct > best_pct:
+                best_pct = pct
+                best_team = team
+
+        if best_team:
+            all_data.append((year, kenpom_abbr, best_team))
 
     df = pd.DataFrame(all_data, columns=['year', 'conference', 'postseason_champion'])
 
-    # remove independent conferences
-    df = df[df['conference'] != 'Independent']
-
-    # map conference names to KenPom abbreviations
-    df['conference'] = df['conference'].map(CONFERENCE_NAME_MAPPING)
-
     # normalize team names
     df['postseason_champion'] = _normalize_team_names(df['postseason_champion'])
-
-    # apply manual overrides for ineligible teams
-    for (override_year, conf), replacement in CONFERENCE_CHAMP_OVERRIDES.items():
-        mask = (df['year'] == override_year) & (df['conference'] == conf)
-        df.loc[mask, 'postseason_champion'] = replacement
 
     return df
 
