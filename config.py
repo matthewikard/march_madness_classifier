@@ -15,10 +15,10 @@ FEATURES = [
 ]
 
 # --- Training config ---
-TRAINING_YEARS = [2019, 2021, 2022, 2023, 2024]
+TRAINING_YEARS = [2019, 2021, 2022, 2023, 2024, 2025]
 
 # Wikipedia ground truth includes 2018 for extra training data
-TOURNAMENT_SEED_YEARS = [2018, 2019, 2021, 2022, 2023, 2024]
+TOURNAMENT_SEED_YEARS = [2018, 2019, 2021, 2022, 2023, 2024, 2025]
 
 HISTORICAL_QUAD_DATES = {
     2019: '2019-03-17',
@@ -26,6 +26,7 @@ HISTORICAL_QUAD_DATES = {
     2022: '2022-03-13',
     2023: '2023-03-11',
     2024: '2024-03-17',
+    2025: '2025-03-16',
 }
 
 # --- Model parameters ---
