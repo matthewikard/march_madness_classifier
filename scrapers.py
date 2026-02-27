@@ -8,6 +8,10 @@ from kenpompy.misc import get_pomeroy_ratings
 
 from config import CONFERENCE_NAME_MAPPING, CONFERENCE_SLUG_MAPPING, TEAM_NAME_MAPPING, CONFERENCE_CHAMP_OVERRIDES
 
+_SR_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+}
+
 _kenpom_browser = None
 
 
@@ -85,7 +89,7 @@ def scrape_conference_champions(years):
 
     for year in years:
         url = f"https://www.sports-reference.com/cbb/seasons/men/{year}.html"
-        response = requests.get(url)
+        response = requests.get(url, headers=_SR_HEADERS)
         soup = BeautifulSoup(response.text, "html.parser")
 
         conf_names = [tag.text.strip() for tag in soup.find_all("td", {"data-stat": "conf_name"})]
@@ -134,13 +138,21 @@ def scrape_conference_leaders(year):
 
     Returns DataFrame with columns: year, conference, postseason_champion
     """
+    import time
     all_data = []
 
     for kenpom_abbr, slug in CONFERENCE_SLUG_MAPPING.items():
+        time.sleep(3)  # rate limit: sports-reference blocks rapid requests
         url = f"https://www.sports-reference.com/cbb/conferences/{slug}/men/{year}.html"
         try:
-            response = requests.get(url)
+            response = requests.get(url, headers=_SR_HEADERS)
+            # retry once after longer wait on rate limit
+            if response.status_code == 429:
+                print(f'    {slug}: rate limited, retrying in 30s...')
+                time.sleep(30)
+                response = requests.get(url, headers=_SR_HEADERS)
             if response.status_code != 200:
+                print(f'    {slug}: HTTP {response.status_code}')
                 continue
         except requests.RequestException:
             continue
@@ -152,8 +164,8 @@ def scrape_conference_leaders(year):
 
         for row in soup.find_all("tr"):
             school_cell = row.find("td", {"data-stat": "school_name"})
-            wins_cell = row.find("td", {"data-stat": "conf_w"})
-            losses_cell = row.find("td", {"data-stat": "conf_l"})
+            wins_cell = row.find("td", {"data-stat": "wins_conf"})
+            losses_cell = row.find("td", {"data-stat": "losses_conf"})
 
             if not school_cell or not wins_cell or not losses_cell:
                 continue
@@ -179,8 +191,11 @@ def scrape_conference_leaders(year):
 
     df = pd.DataFrame(all_data, columns=['year', 'conference', 'postseason_champion'])
 
-    # normalize team names
+    # normalize team names (hyphens -> spaces, then standard normalization)
+    df['postseason_champion'] = df['postseason_champion'].str.replace('-', ' ', regex=False)
     df['postseason_champion'] = _normalize_team_names(df['postseason_champion'])
+
+    print(f'  Found leaders for {len(df)} conferences')
 
     return df
 
@@ -266,7 +281,7 @@ def scrape_tournament_seeds(years):
 
     for year in years:
         url = f"https://en.wikipedia.org/wiki/{year}_NCAA_Division_I_men%27s_basketball_tournament"
-        response = requests.get(url, headers={'User-Agent': 'MarchMadnessClassifier/1.0'})
+        response = requests.get(url, headers=_SR_HEADERS)
         soup = BeautifulSoup(response.content, 'html.parser')
 
         tables = soup.find_all('table', class_='wikitable sortable plainrowheaders')
