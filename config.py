@@ -160,9 +160,14 @@ TEAM_NAME_MAPPING = {
     'McNeese St.': 'McNeese',
     'SIU Edwardsville': 'SIUE',
 
-    # sports-reference.com variants (conference champions)
+    # sports-reference.com variants (conference champions & standings)
+    'Albany (NY)': 'Albany',
     'College of Charleston': 'Charleston',
     'FDU': 'Fairleigh Dickinson',
+    'Long Island University': 'LIU',
+    'Maryland Baltimore County': 'UMBC',
+    'Massachusetts Lowell': 'UMass Lowell',
+    'Saint Francis (PA)': 'Saint Francis',
     'Gardner-Webb': 'Gardner Webb',
     'Grambling': 'Grambling St.',
     'Loyola (IL)': 'Loyola Chicago',
