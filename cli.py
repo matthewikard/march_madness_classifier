@@ -110,6 +110,13 @@ def cmd_predict(args):
     print(f'\nFirst 10 Out:')
     print(bubble[['team', 'conference', 'record', 'tournament_prob']].to_string(index=False))
 
+    # save predictions to CSV
+    from config import DATA_DIR
+    os.makedirs(DATA_DIR, exist_ok=True)
+    out_path = os.path.join(DATA_DIR, f'predictions_{year}_{quad_date}.csv')
+    results.sort_values('tournament_prob', ascending=False).to_csv(out_path, index=False)
+    print(f'\nPredictions saved to {out_path}')
+
 
 def main():
     parser = argparse.ArgumentParser(description='March Madness Tournament Field Predictor')
