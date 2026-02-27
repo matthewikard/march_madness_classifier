@@ -61,6 +61,15 @@ def build_dataset(kenpom_df, quad_df, champs_df, seeds_df=None):
 
     merged = merged.rename(columns=rename)
 
+    # --- Check for unmatched conference leaders ---
+    if not champs_df.empty:
+        kenpom_teams = set(merged['team'].unique())
+        unmatched = champs_df[~champs_df['postseason_champion'].isin(kenpom_teams)]
+        if not unmatched.empty:
+            print('  WARNING: conference leaders not matching any KenPom team (update TEAM_NAME_MAPPING):')
+            for _, row in unmatched.iterrows():
+                print(f'    {row["conference"]}: {repr(row["postseason_champion"])}')
+
     # --- Feature engineering ---
 
     # is automatic qualifier
