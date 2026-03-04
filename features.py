@@ -3,12 +3,12 @@ import pandas as pd
 from config import POWER_CONFERENCES, PERCENTILE_FEATURES
 
 
-def build_dataset(kenpom_df, quad_df, champs_df, seeds_df=None):
+def build_dataset(torvik_df, quad_df, champs_df, seeds_df=None):
     """
     Merge all data sources and engineer features for the model.
 
     Args:
-        kenpom_df: from scrape_kenpom()
+        torvik_df: from scrape_torvik()
         quad_df: from scrape_quad_records()
         champs_df: from scrape_conference_champions()
         seeds_df: from scrape_tournament_seeds() — None for prediction mode
@@ -17,8 +17,8 @@ def build_dataset(kenpom_df, quad_df, champs_df, seeds_df=None):
         DataFrame with all features and (if seeds_df provided) the
         made_tournament target column.
     """
-    # merge kenpom with quad records
-    merged = pd.merge(kenpom_df, quad_df, on=['team', 'year'], how='left')
+    # merge torvik with quad records
+    merged = pd.merge(torvik_df, quad_df, on=['team', 'year'], how='left')
 
     # merge with conference champions
     merged = pd.merge(
@@ -33,12 +33,11 @@ def build_dataset(kenpom_df, quad_df, champs_df, seeds_df=None):
         merged = pd.merge(merged, seeds_df, on=['team', 'year'], how='left')
 
     # select and rename columns
-    # after merges, conference appears as conference_x (from kenpom) and
+    # after merges, conference appears as conference_x (from torvik) and
     # conference_y (from champs). record appears as record_x and record_y.
-    # seed appears as seed_x (kenpom) and seed_y (tournament seeds).
     cols = [
         'team', 'year', 'conference_x', 'record_y',
-        'sos_adj_em_rank', 'adj_em', 'adj_em_rank', 'o_adj_rank', 'd_adj_rank',
+        'sos',
         'wins', 'losses', 'win_percentage',
         'quad_1_record', 'quad_2_record', 'quad_3_record', 'quad_4_record',
         'non_d1_record',
@@ -48,7 +47,7 @@ def build_dataset(kenpom_df, quad_df, champs_df, seeds_df=None):
     ]
 
     if seeds_df is not None:
-        cols.append('seed_y')
+        cols.append('seed')
 
     merged = merged[cols]
 
@@ -56,17 +55,15 @@ def build_dataset(kenpom_df, quad_df, champs_df, seeds_df=None):
         'conference_x': 'conference',
         'record_y': 'record',
     }
-    if seeds_df is not None:
-        rename['seed_y'] = 'seed'
 
     merged = merged.rename(columns=rename)
 
     # --- Check for unmatched conference leaders ---
     if not champs_df.empty:
-        kenpom_teams = set(merged['team'].unique())
-        unmatched = champs_df[~champs_df['postseason_champion'].isin(kenpom_teams)]
+        all_teams = set(merged['team'].unique())
+        unmatched = champs_df[~champs_df['postseason_champion'].isin(all_teams)]
         if not unmatched.empty:
-            print('  WARNING: conference leaders not matching any KenPom team (update TEAM_NAME_MAPPING):')
+            print('  WARNING: conference leaders not matching any Torvik team (update TEAM_NAME_MAPPING):')
             for _, row in unmatched.iterrows():
                 print(f'    {row["conference"]}: {repr(row["postseason_champion"])}')
 

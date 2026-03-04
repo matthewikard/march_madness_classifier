@@ -1,29 +1,12 @@
-import os
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
-from dotenv import load_dotenv
-from kenpompy.utils import login
-from kenpompy.misc import get_pomeroy_ratings
 
 from config import CONFERENCE_NAME_MAPPING, CONFERENCE_SLUG_MAPPING, TEAM_NAME_MAPPING, CONFERENCE_CHAMP_OVERRIDES
 
 _SR_HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
 }
-
-_kenpom_browser = None
-
-
-def _get_kenpom_browser():
-    """Return a cached authenticated KenPom session, logging in once."""
-    global _kenpom_browser
-    if _kenpom_browser is None:
-        load_dotenv()
-        username = os.environ['KENPOM_USER']
-        password = os.environ['KENPOM_PASSWORD']
-        _kenpom_browser = login(username, password)
-    return _kenpom_browser
 
 
 def _normalize_team_names(series):
@@ -49,57 +32,25 @@ def scrape_torvik(years):
         response = requests.get(url)
         response.raise_for_status()
         df = pd.read_csv(StringIO(response.text))
+
+        # Older CSVs (pre-2023) don't include a rank column in the data,
+        # but the header row still starts with 'rank', shifting every
+        # column name one position to the right. Detect this by checking
+        # whether the first column is numeric (rank) or a string (team name).
+        if not pd.api.types.is_numeric_dtype(df.iloc[:, 0]):
+            df = df.iloc[:, [0, 1, 2, 14]].copy()
+            df.columns = ['team', 'conf', 'record', 'sos']
+        else:
+            df = df[['team', 'conf', 'record', 'sos']]
+
         df['year'] = year
         frames.append(df)
 
     df = pd.concat(frames, ignore_index=True)
-
-    # select and rename columns
-    df = df[['team', 'year', 'conf', 'record', 'sos']]
     df = df.rename(columns={'conf': 'conference'})
 
     # normalize team names to match other scrapers
     df['team'] = _normalize_team_names(df['team'])
-
-    return df
-
-
-def scrape_kenpom(years):
-    """
-    Scrape KenPom ratings for the given years.
-    Credentials loaded from KENPOM_USER and KENPOM_PASSWORD environment variables.
-
-    Returns DataFrame with columns:
-        team, year, seed, conference, record, sos_adj_em_rank, adj_em,
-        o_adj_rank, d_adj_rank, adj_em_rank
-    """
-    browser = _get_kenpom_browser()
-
-    frames = []
-    for year in years:
-        ratings = get_pomeroy_ratings(browser, year)
-        ratings['year'] = year
-        frames.append(ratings)
-
-    df = pd.concat(frames, ignore_index=True)
-
-    # select columns of interest
-    df = df[['Team', 'year', 'Seed', 'Conf', 'W-L', 'SOS-AdjEM.Rank', 'AdjEM', 'AdjO.Rank', 'AdjD.Rank']]
-
-    # rename columns
-    df.columns = ['team', 'year', 'seed', 'conference', 'record',
-                  'sos_adj_em_rank', 'adj_em', 'o_adj_rank', 'd_adj_rank']
-
-    # filter out teams who didn't play (2021 issue)
-    df[['wins', 'losses']] = df['record'].str.split('-', expand=True).astype(int)
-    df = df[df['wins'] + df['losses'] > 0]
-    df = df.drop(['wins', 'losses'], axis=1)
-
-    # remove '+' from adjusted efficiency, convert to float
-    df['adj_em'] = df['adj_em'].str.replace('+', '', regex=False).astype('double')
-
-    # create rank column for efficiency
-    df['adj_em_rank'] = df.groupby('year')['adj_em'].rank(ascending=False, method='min').astype(int)
 
     return df
 
@@ -150,7 +101,7 @@ def scrape_conference_champions(years):
 
         frames.append(df)
 
-    # leaders data is already in KenPom format from scrape_conference_leaders
+    # leaders data is already in abbreviated format from scrape_conference_leaders
     frames.extend(leaders_frames)
 
     if frames:
@@ -172,7 +123,7 @@ def scrape_conference_leaders(year):
     import time
     all_data = []
 
-    for kenpom_abbr, slug in CONFERENCE_SLUG_MAPPING.items():
+    for conf_abbr, slug in CONFERENCE_SLUG_MAPPING.items():
         time.sleep(3)  # rate limit: sports-reference blocks rapid requests
         url = f"https://www.sports-reference.com/cbb/conferences/{slug}/men/{year}.html"
         try:
@@ -218,7 +169,7 @@ def scrape_conference_leaders(year):
                 best_team = team
 
         if best_team:
-            all_data.append((year, kenpom_abbr, best_team))
+            all_data.append((year, conf_abbr, best_team))
 
     df = pd.DataFrame(all_data, columns=['year', 'conference', 'postseason_champion'])
 

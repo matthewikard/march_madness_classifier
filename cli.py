@@ -2,8 +2,8 @@
 CLI for March Madness tournament field prediction.
 
 Usage:
-    python cli.py scrape                  # scrape & save training data (requires KenPom login)
-    python cli.py train                   # train model from saved data (no login needed)
+    python cli.py scrape                  # scrape & save training data
+    python cli.py train                   # train model from saved data
     python cli.py train --scrape          # scrape fresh data then train
     python cli.py predict 2026            # predict using today's quad data
     python cli.py predict 2026 --date 2026-02-22
@@ -22,11 +22,11 @@ from config import (
 
 def _scrape_training_data():
     """Scrape all historical data sources, build and save the training dataset."""
-    from scrapers import scrape_kenpom, scrape_conference_champions, scrape_quad_records, scrape_tournament_seeds
+    from scrapers import scrape_torvik, scrape_conference_champions, scrape_quad_records, scrape_tournament_seeds
     from features import build_dataset
 
-    print('Scraping KenPom ratings...')
-    kenpom_df = scrape_kenpom(TRAINING_YEARS)
+    print('Scraping Torvik ratings...')
+    torvik_df = scrape_torvik(TRAINING_YEARS)
 
     print('Scraping conference champions...')
     champs_df = scrape_conference_champions(TRAINING_YEARS)
@@ -39,7 +39,7 @@ def _scrape_training_data():
     seeds_df = scrape_tournament_seeds(TOURNAMENT_SEED_YEARS)
 
     print('Building dataset...')
-    dataset = build_dataset(kenpom_df, quad_df, champs_df, seeds_df)
+    dataset = build_dataset(torvik_df, quad_df, champs_df, seeds_df)
 
     os.makedirs(os.path.dirname(DEFAULT_DATASET_PATH), exist_ok=True)
     dataset.to_csv(DEFAULT_DATASET_PATH, index=False)
@@ -73,7 +73,7 @@ def cmd_train(args):
 
 def cmd_predict(args):
     """Load saved model, scrape current year data, predict tournament field."""
-    from scrapers import scrape_kenpom, scrape_conference_champions, scrape_quad_records
+    from scrapers import scrape_torvik, scrape_conference_champions, scrape_quad_records
     from features import build_dataset
     from model import load_model, predict
 
@@ -82,8 +82,8 @@ def cmd_predict(args):
 
     print(f'Predicting {year} tournament field using quad data from {quad_date}...')
 
-    print('Scraping KenPom ratings...')
-    kenpom_df = scrape_kenpom([year])
+    print('Scraping Torvik ratings...')
+    torvik_df = scrape_torvik([year])
 
     print('Scraping conference champions...')
     champs_df = scrape_conference_champions([year])
@@ -92,7 +92,7 @@ def cmd_predict(args):
     quad_df = scrape_quad_records([quad_date])
 
     print('Building dataset...')
-    dataset = build_dataset(kenpom_df, quad_df, champs_df, seeds_df=None)
+    dataset = build_dataset(torvik_df, quad_df, champs_df, seeds_df=None)
 
     print('Loading model...')
     clf = load_model(model_path=args.model_path)
@@ -127,13 +127,13 @@ def main():
     subparsers = parser.add_subparsers(dest='command', required=True)
 
     # scrape command
-    subparsers.add_parser('scrape', help='Scrape historical data and save to disk (requires KenPom login)')
+    subparsers.add_parser('scrape', help='Scrape historical data and save to disk')
 
     # train command
     train_parser = subparsers.add_parser('train', help='Train model from saved training data')
     train_parser.add_argument(
         '--scrape', action='store_true',
-        help='Scrape fresh data before training (requires KenPom login)'
+        help='Scrape fresh data before training'
     )
     train_parser.add_argument(
         '--no-plots', action='store_true',

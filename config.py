@@ -2,7 +2,7 @@ import os
 
 # --- Model features ---
 FEATURES = [
-    'sos_adj_em_rank',
+    'sos',
     'win_percentage',
     'quad_1_win_percentage',
     'quad_2_win_percentage',
@@ -53,7 +53,7 @@ DEFAULT_MODEL_PATH = os.path.join(MODEL_DIR, 'model.joblib')
 # --- Power conferences ---
 POWER_CONFERENCES = ['ACC', 'B10', 'B12', 'SEC', 'P12', 'BE']
 
-# --- Conference name mapping (sports-reference full name -> KenPom abbreviation) ---
+# --- Conference name mapping (sports-reference full name -> abbreviation) ---
 CONFERENCE_NAME_MAPPING = {
     'Big 12 Conference': 'B12',
     'American Athletic Conference': 'Amer',
@@ -90,7 +90,7 @@ CONFERENCE_NAME_MAPPING = {
     'Coastal Athletic Association': 'CAA',
 }
 
-# --- Conference slug mapping (KenPom abbreviation -> sports-reference URL slug) ---
+# --- Conference slug mapping (abbreviation -> sports-reference URL slug) ---
 CONFERENCE_SLUG_MAPPING = {
     'B12': 'big-12',
     'Amer': 'american',
@@ -126,7 +126,7 @@ CONFERENCE_SLUG_MAPPING = {
     'SWAC': 'swac',
 }
 
-# --- Unified team name mapping (any variant -> KenPom canonical name) ---
+# --- Unified team name mapping (any variant -> canonical name) ---
 # Consolidates all source-specific mappings from the notebook.
 # Applied AFTER the 'State' -> 'St.' replacement.
 TEAM_NAME_MAPPING = {
@@ -160,8 +160,13 @@ TEAM_NAME_MAPPING = {
     'McNeese St.': 'McNeese',
     'SIU Edwardsville': 'SIUE',
 
+    # Torvik variants (State -> St. replacement over-normalizes these)
+    'N.C. St.': 'N.C. State',
+
     # sports-reference.com variants (conference champions & standings)
     'Albany (NY)': 'Albany',
+    "St. John's (NY)": "St. John's",
+    'Southern Illinois-Edwardsville': 'SIUE',
     'College of Charleston': 'Charleston',
     'FDU': 'Fairleigh Dickinson',
     'Long Island University': 'LIU',

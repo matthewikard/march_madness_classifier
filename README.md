@@ -10,7 +10,7 @@ Classifier correctly projected 67/68 tournament teams in 2025. More in my substa
 
 ## Data Sources
 
-- **[KenPom](https://kenpom.com/)** — Strength of schedule rankings (requires paid subscription, accessed via [kenpompy](https://kenpompy.readthedocs.io/en/latest/))
+- **[Bart Torvik](https://barttorvik.com/)** — Strength of schedule ratings
 - **[Sports Reference](https://www.sports-reference.com/)** — Conference tournament champions (automatic qualifiers)
 - **[Bracketologists.com](https://bracketologists.com/)** — Quad 1–4 records
 - **[Wikipedia](https://en.wikipedia.org/)** — Historical tournament fields (ground truth labels)
@@ -21,7 +21,7 @@ Training data spans 2019–2024 (excluding 2020), aligning with the committee's 
 
 | Feature | Description |
 |---|---|
-| `sos_adj_em_rank` | KenPom strength of schedule ranking |
+| `sos` | Bart Torvik strength of schedule |
 | `win_percentage` | Overall win percentage |
 | `quad_1–4_win_percentage` | Win percentage against each quad |
 | `is_aq` | Whether the team won its conference tournament |
@@ -36,18 +36,10 @@ Training data spans 2019–2024 (excluding 2020), aligning with the committee's 
 pip install -r requirements.txt
 ```
 
-2. Create a `.env` file with your KenPom credentials (see `.env.example`):
-```
-KENPOM_USER=your_email@example.com
-KENPOM_PASSWORD=your_password
-```
-
-A [KenPom](https://kenpom.com/) premium subscription is required.
-
 ## Usage
 
 ### 1. Scrape training data
-Scrapes historical data (2019–2024) from all sources and saves it to `data/training_data.csv`. Requires KenPom login:
+Scrapes historical data (2019–2024) from all sources and saves it to `data/training_data.csv`:
 ```bash
 python cli.py scrape
 ```
@@ -55,7 +47,7 @@ python cli.py scrape
 You only need to re-run this when new seasons finish or you want to refresh the training data.
 
 ### 2. Train the model
-Trains the classifier from saved data and saves it to `models/model.joblib`. No KenPom login needed:
+Trains the classifier from saved data and saves it to `models/model.joblib`:
 ```bash
 python cli.py train
 ```
@@ -87,7 +79,7 @@ python cli.py predict 2026 --date 2026-03-15
 
 ```
 config.py       — Constants, feature list, team/conference name mappings
-scrapers.py     — Data scraping (KenPom, Sports Reference, Bracketologists, Wikipedia)
+scrapers.py     — Data scraping (Bart Torvik, Sports Reference, Bracketologists, Wikipedia)
 features.py     — Data merging and feature engineering
 model.py        — Model training, persistence (joblib), and prediction
 cli.py          — Command-line interface
@@ -102,6 +94,4 @@ models/         — Saved model files
 - matplotlib
 - beautifulsoup4
 - requests
-- kenpompy
-- python-dotenv
 - joblib
