@@ -33,6 +33,37 @@ def _normalize_team_names(series):
     return series
 
 
+def scrape_torvik(years):
+    """
+    Fetch team ratings from Bart Torvik for the given years.
+    Downloads CSV files directly from barttorvik.com (no authentication required).
+
+    Returns DataFrame with columns:
+        team, year, conference, record, sos
+    """
+    from io import StringIO
+
+    frames = []
+    for year in years:
+        url = f'https://barttorvik.com/{year}_team_results.csv'
+        response = requests.get(url)
+        response.raise_for_status()
+        df = pd.read_csv(StringIO(response.text))
+        df['year'] = year
+        frames.append(df)
+
+    df = pd.concat(frames, ignore_index=True)
+
+    # select and rename columns
+    df = df[['team', 'year', 'conf', 'record', 'sos']]
+    df = df.rename(columns={'conf': 'conference'})
+
+    # normalize team names to match other scrapers
+    df['team'] = _normalize_team_names(df['team'])
+
+    return df
+
+
 def scrape_kenpom(years):
     """
     Scrape KenPom ratings for the given years.
