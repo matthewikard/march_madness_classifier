@@ -16,7 +16,8 @@ import pandas as pd
 
 from config import (
     TRAINING_YEARS, TOURNAMENT_SEED_YEARS, HISTORICAL_QUAD_DATES,
-    DEFAULT_MODEL_PATH, DEFAULT_DATASET_PATH,
+    DEFAULT_MODEL_PATH, DEFAULT_DATASET_PATH, MODEL_PARAMS,
+    model_path_for,
 )
 
 
@@ -67,8 +68,9 @@ def cmd_train(args):
         print(f'Loading saved training data from {DEFAULT_DATASET_PATH}...')
         dataset = pd.read_csv(DEFAULT_DATASET_PATH)
 
+    model_path = args.model_path if args.model_path != DEFAULT_MODEL_PATH else model_path_for(args.model_type)
     print(f'Training model ({len(dataset)} teams across {len(TRAINING_YEARS)} seasons)...')
-    train(dataset, model_path=args.model_path, show_plots=not args.no_plots)
+    train(dataset, model_path=model_path, show_plots=not args.no_plots, model_type=args.model_type)
 
 
 def cmd_predict(args):
@@ -94,8 +96,9 @@ def cmd_predict(args):
     print('Building dataset...')
     dataset = build_dataset(torvik_df, quad_df, champs_df, seeds_df=None)
 
-    print('Loading model...')
-    clf = load_model(model_path=args.model_path)
+    print(f'Loading model ({args.model_type})...')
+    model_path = args.model_path if args.model_path != DEFAULT_MODEL_PATH else model_path_for(args.model_type)
+    clf = load_model(model_path=model_path)
 
     print('Predicting...\n')
     results = predict(clf, dataset)
@@ -139,6 +142,11 @@ def main():
         '--no-plots', action='store_true',
         help='Skip displaying confusion matrix and feature importance plots'
     )
+    train_parser.add_argument(
+        '--model-type', default='random_forest',
+        choices=list(MODEL_PARAMS.keys()),
+        help='Model type to train (default: random_forest)'
+    )
 
     # predict command
     predict_parser = subparsers.add_parser('predict', help='Predict tournament field for a year')
@@ -146,6 +154,11 @@ def main():
     predict_parser.add_argument(
         '--date', type=str, default=None,
         help='Quad records date (YYYY-MM-DD). Defaults to today.'
+    )
+    predict_parser.add_argument(
+        '--model-type', default='random_forest',
+        choices=list(MODEL_PARAMS.keys()),
+        help='Model type to use for prediction (default: random_forest)'
     )
 
     args = parser.parse_args()

@@ -35,9 +35,23 @@ HISTORICAL_QUAD_DATES = {
 }
 
 # --- Model parameters ---
+MODEL_TYPE = 'random_forest'  # default model type
+
 MODEL_PARAMS = {
-    'n_estimators': 100,
-    'random_state': 68,
+    'random_forest': {
+        'n_estimators': 100,
+        'random_state': 68,
+    },
+    'logistic_regression': {
+        'max_iter': 1000,
+        'random_state': 68,
+    },
+    'gradient_boosting': {
+        'n_estimators': 200,
+        'learning_rate': 0.1,
+        'max_depth': 4,
+        'random_state': 68,
+    },
 }
 
 TEST_SIZE = 0.2
@@ -49,6 +63,10 @@ DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
 DEFAULT_DATASET_PATH = os.path.join(DATA_DIR, 'training_data.csv')
 MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'models')
 DEFAULT_MODEL_PATH = os.path.join(MODEL_DIR, 'model.joblib')
+
+def model_path_for(model_type):
+    """Return model path with model type in filename, e.g. models/model_logistic_regression.joblib"""
+    return os.path.join(MODEL_DIR, f'model_{model_type}.joblib')
 
 # --- Power conferences ---
 POWER_CONFERENCES = ['ACC', 'B10', 'B12', 'SEC', 'P12', 'BE']
