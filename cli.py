@@ -3,8 +3,10 @@ CLI for March Madness tournament field prediction.
 
 Usage:
     python cli.py scrape                  # scrape & save training data
-    python cli.py train                   # train model from saved data
+    python cli.py train                   # train binary model from saved data
     python cli.py train --scrape          # scrape fresh data then train
+    python cli.py train-seed              # train seed model from saved data
+    python cli.py train-seed --scrape     # scrape fresh data then train seeds
     python cli.py predict 2026            # predict using today's quad data
     python cli.py predict 2026 --date 2026-02-22
 """
@@ -73,6 +75,25 @@ def cmd_train(args):
     train(dataset, model_path=model_path, show_plots=not args.no_plots, model_type=args.model_type)
 
 
+def cmd_train_seed(args):
+    """Train seed prediction model from saved (or freshly scraped) training data."""
+    from model import train_seeds
+
+    if args.scrape:
+        dataset = _scrape_training_data()
+    else:
+        if not os.path.exists(DEFAULT_DATASET_PATH):
+            print(f'No saved training data found at {DEFAULT_DATASET_PATH}.')
+            print('Run "python cli.py scrape" first, or use "python cli.py train-seed --scrape".')
+            return
+        print(f'Loading saved training data from {DEFAULT_DATASET_PATH}...')
+        dataset = pd.read_csv(DEFAULT_DATASET_PATH)
+
+    tourney_count = dataset[dataset['made_tournament'] == True]['seed'].notna().sum()
+    print(f'Training seed model ({tourney_count} tournament teams)...')
+    train_seeds(dataset, show_plots=not args.no_plots)
+
+
 def cmd_predict(args):
     """Load saved model, scrape current year data, predict tournament field."""
     from scrapers import scrape_torvik, scrape_conference_champions, scrape_quad_records
@@ -113,6 +134,39 @@ def cmd_predict(args):
     print(f'\nFirst 10 Out:')
     print(bubble[['team', 'conference', 'record', 'tournament_prob']].to_string(index=False))
 
+    # --- Seed predictions (if seed model exists) ---
+    from config import seed_model_path_for
+    seed_model_file = seed_model_path_for()
+
+    if os.path.exists(seed_model_file):
+        from model import load_seed_model, predict_seeds
+
+        print('\nLoading seed model...')
+        seed_clf = load_seed_model(seed_model_file)
+
+        seeded = predict_seeds(seed_clf, field)
+
+        print(f'\nPredicted {year} Tournament Bracket:')
+        print(f'{"Seed":>4}  {"Team":<25} {"Conf":<6} {"Record":<8} {"Raw":>6}  {"FF"}')
+        print('-' * 60)
+        for seed_num in range(1, 17):
+            seed_teams = seeded[seeded['predicted_seed'] == seed_num].sort_values('predicted_seed_raw')
+            for _, row in seed_teams.iterrows():
+                ff_marker = ' *' if row['first_four'] else ''
+                print(f"{seed_num:>4}  {row['team']:<25} {row['conference']:<6} {row.get('record', ''):>8} {row['predicted_seed_raw']:>6.2f}{ff_marker}")
+
+        ff_count = seeded['first_four'].sum()
+        print(f'\n  * = First Four ({int(ff_count)} teams)')
+
+        # merge seed columns into results for CSV output
+        results = results.merge(
+            seeded[['team', 'year', 'predicted_seed', 'predicted_seed_raw', 'first_four']],
+            on=['team', 'year'],
+            how='left',
+        )
+    else:
+        print('\nNo seed model found. Run "python cli.py train-seed" to assign seeds.')
+
     # save predictions to CSV
     from config import DATA_DIR
     os.makedirs(DATA_DIR, exist_ok=True)
@@ -148,6 +202,17 @@ def main():
         help='Model type to train (default: random_forest)'
     )
 
+    # train-seed command
+    seed_parser = subparsers.add_parser('train-seed', help='Train seed prediction model for tournament seeding')
+    seed_parser.add_argument(
+        '--scrape', action='store_true',
+        help='Scrape fresh data before training'
+    )
+    seed_parser.add_argument(
+        '--no-plots', action='store_true',
+        help='Skip displaying evaluation plots'
+    )
+
     # predict command
     predict_parser = subparsers.add_parser('predict', help='Predict tournament field for a year')
     predict_parser.add_argument('year', type=int, help='Year to predict (e.g., 2026)')
@@ -167,6 +232,8 @@ def main():
         cmd_scrape(args)
     elif args.command == 'train':
         cmd_train(args)
+    elif args.command == 'train-seed':
+        cmd_train_seed(args)
     elif args.command == 'predict':
         cmd_predict(args)
 

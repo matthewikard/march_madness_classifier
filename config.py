@@ -15,6 +15,20 @@ FEATURES = [
     'bad_losses',
 ]
 
+# Features for the seed prediction model (same as FEATURES minus is_aq)
+SEED_FEATURES = [
+    'net_rank',
+    'sos',
+    'win_percentage',
+    'quad_1_win_percentage',
+    'quad_2_win_percentage',
+    'quad_3_win_percentage',
+    'quad_4_win_percentage',
+    'is_power_conference',
+    'quad_1_wins',
+    'bad_losses',
+]
+
 # Features to convert to per-year percentile ranks.
 # Only absolute counts that grow over the season — ratios and ranks
 # are already comparable at any point.
@@ -68,6 +82,10 @@ DEFAULT_MODEL_PATH = os.path.join(MODEL_DIR, 'model.joblib')
 def model_path_for(model_type):
     """Return model path with model type in filename, e.g. models/model_logistic_regression.joblib"""
     return os.path.join(MODEL_DIR, f'model_{model_type}.joblib')
+
+def seed_model_path_for(model_type='linear_regression'):
+    """Return path for a seed model file, e.g. models/seed_model_linear_regression.joblib"""
+    return os.path.join(MODEL_DIR, f'seed_model_{model_type}.joblib')
 
 # --- Power conferences ---
 POWER_CONFERENCES = ['ACC', 'B10', 'B12', 'SEC', 'P12', 'BE']
