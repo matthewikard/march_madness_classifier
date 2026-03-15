@@ -235,7 +235,7 @@ def scrape_quad_records(dates):
         dates: list of date strings in 'YYYY-MM-DD' format
 
     Returns DataFrame with columns:
-        team, year, record, quad_1-4_record, non_d1_record,
+        team, year, net_rank, record, quad_1-4_record, non_d1_record,
         wins, losses, win_percentage, quad_1-4_win_percentage
     """
     all_data = []
@@ -248,10 +248,13 @@ def scrape_quad_records(dates):
         for team_div in soup.find_all('div', class_='teamBarSmall'):
             team_name = team_div.find('span', class_='teamNameSmall').a.contents[0].strip()
             records = [span.text.strip() for span in team_div.find_all('span', class_='teamRecordSmall')]
+            net_rank_tag = team_div.find('span', class_='teamRankSmall')
+            net_rank = int(net_rank_tag.text.strip()) if net_rank_tag else None
 
             all_data.append({
                 'team': team_name,
                 'year': int(date[:4]),
+                'net_rank': net_rank,
                 'record': records[0],
                 'quad_1_record': records[1],
                 'quad_2_record': records[2],

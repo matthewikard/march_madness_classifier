@@ -2,6 +2,7 @@ import os
 
 # --- Model features ---
 FEATURES = [
+    'net_rank',
     'sos',
     'win_percentage',
     'quad_1_win_percentage',
@@ -220,5 +221,18 @@ CONFERENCE_CHAMP_OVERRIDES = {
 # Key: (year, conference_abbr), Value: team name (Torvik canonical name).
 # These take priority over both scraped tournament data and regular season leaders.
 CONFERENCE_CHAMP_MANUAL = {
-    # (2026, 'B12'): 'Arizona',
+    (2026, 'A10'): 'VCU',
+    (2026, 'ACC'): 'Duke',
+    (2026, 'AE'): 'UMBC',
+    (2026, 'B12'): 'Arizona',
+    (2026, 'BE'): "St. John's",
+    (2026, 'BW'): 'Hawaii',
+    (2026, 'CUSA'): 'Kennesaw St.',
+    (2026, 'Ivy'): 'Penn',
+    (2026, 'MAC'): 'Akron',
+    (2026, 'MEAC'): 'Howard',
+    (2026, 'MWC'): 'Utah St.',
+    (2026, 'SEC'): 'Arkansas',
+    (2026, 'SWAC'): 'Prairie View A&M',
+    (2026, 'WAC'): 'Cal Baptist',
 }

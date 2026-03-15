@@ -37,7 +37,7 @@ def build_dataset(torvik_df, quad_df, champs_df, seeds_df=None):
     # conference_y (from champs). record appears as record_x and record_y.
     cols = [
         'team', 'year', 'conference_x', 'record_y',
-        'sos',
+        'net_rank', 'sos',
         'wins', 'losses', 'win_percentage',
         'quad_1_record', 'quad_2_record', 'quad_3_record', 'quad_4_record',
         'non_d1_record',
