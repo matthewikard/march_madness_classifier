@@ -106,6 +106,8 @@ CONFERENCE_NAME_MAPPING = {
     'Northeast Conference': 'NEC',
     'Southwest Athletic Conference': 'SWAC',
     'Coastal Athletic Association': 'CAA',
+    'American Conference': 'Amer',   # renamed from 'American Athletic Conference' in 2026
+    'NEC': 'NEC',                    # renamed from 'Northeast Conference' in 2026
 }
 
 # --- Conference slug mapping (abbreviation -> sports-reference URL slug) ---
@@ -180,6 +182,7 @@ TEAM_NAME_MAPPING = {
 
     # Torvik variants (State -> St. replacement over-normalizes these)
     'N.C. St.': 'N.C. State',
+    'Queens (NC)': 'Queens',
 
     # sports-reference.com variants (conference champions & standings)
     'Albany (NY)': 'Albany',
@@ -210,4 +213,12 @@ TEAM_NAME_MAPPING = {
 CONFERENCE_CHAMP_OVERRIDES = {
     (2022, 'ASun'): 'Jacksonville St.',
     (2023, 'NEC'): 'Fairleigh Dickinson',
+}
+
+# --- Manual conference tournament champions ---
+# For conferences whose tournament results aren't yet on sports-reference.
+# Key: (year, conference_abbr), Value: team name (Torvik canonical name).
+# These take priority over both scraped tournament data and regular season leaders.
+CONFERENCE_CHAMP_MANUAL = {
+    # (2026, 'B12'): 'Arizona',
 }

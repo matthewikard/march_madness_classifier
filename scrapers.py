@@ -2,7 +2,7 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 
-from config import CONFERENCE_NAME_MAPPING, CONFERENCE_SLUG_MAPPING, TEAM_NAME_MAPPING, CONFERENCE_CHAMP_OVERRIDES
+from config import CONFERENCE_NAME_MAPPING, CONFERENCE_SLUG_MAPPING, TEAM_NAME_MAPPING, CONFERENCE_CHAMP_OVERRIDES, CONFERENCE_CHAMP_MANUAL
 
 _SR_HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -67,6 +67,7 @@ def scrape_conference_champions(years):
     Returns DataFrame with columns: year, conference, postseason_champion
     """
     tourney_data = []
+    missing_confs = {}  # year -> set of conf abbreviations needing fallback
     leaders_frames = []
 
     for year in years:
@@ -79,8 +80,17 @@ def scrape_conference_champions(years):
 
         has_tourney_data = any(c for c in tourney_champs)
         if has_tourney_data:
+            year_missing = set()
             for conf, champ in zip(conf_names, tourney_champs):
-                tourney_data.append((year, conf, champ))
+                if conf == 'Independent':
+                    continue
+                abbr = CONFERENCE_NAME_MAPPING.get(conf)
+                if champ:
+                    tourney_data.append((year, conf, champ))
+                elif abbr:
+                    year_missing.add(abbr)
+            if year_missing:
+                missing_confs[year] = year_missing
         else:
             # mid-season: scrape conference standings for current leaders
             print(f'  No tournament data for {year}, scraping conference standings...')
@@ -91,7 +101,6 @@ def scrape_conference_champions(years):
 
     if tourney_data:
         df = pd.DataFrame(tourney_data, columns=['year', 'conference', 'postseason_champion'])
-        df = df[df['conference'] != 'Independent']
         df['conference'] = df['conference'].map(CONFERENCE_NAME_MAPPING)
         df['postseason_champion'] = _normalize_team_names(df['postseason_champion'])
 
@@ -100,6 +109,27 @@ def scrape_conference_champions(years):
             df.loc[mask, 'postseason_champion'] = replacement
 
         frames.append(df)
+
+    # fall back to regular season leaders for conferences with missing tournament data
+    for year, confs in missing_confs.items():
+        # apply manual champions first, only scrape leaders for the rest
+        manual_rows = []
+        remaining = set()
+        for conf in confs:
+            manual = CONFERENCE_CHAMP_MANUAL.get((year, conf))
+            if manual:
+                manual_rows.append((year, conf, manual))
+            else:
+                remaining.add(conf)
+
+        if manual_rows:
+            manual_df = pd.DataFrame(manual_rows, columns=['year', 'conference', 'postseason_champion'])
+            frames.append(manual_df)
+
+        if remaining:
+            print(f'  {year}: no tournament champion for {sorted(remaining)}, falling back to regular season leaders...')
+            leaders_df = scrape_conference_leaders(year, only_confs=remaining)
+            leaders_frames.append(leaders_df)
 
     # leaders data is already in abbreviated format from scrape_conference_leaders
     frames.extend(leaders_frames)
@@ -110,7 +140,7 @@ def scrape_conference_champions(years):
     return pd.DataFrame(columns=['year', 'conference', 'postseason_champion'])
 
 
-def scrape_conference_leaders(year):
+def scrape_conference_leaders(year, only_confs=None):
     """
     Scrape current conference standings from sports-reference.com to find
     the team leading each conference by conference win percentage.
@@ -118,12 +148,20 @@ def scrape_conference_leaders(year):
     Used as a mid-season fallback when conference tournament champions
     are not yet determined.
 
+    Args:
+        year: season year
+        only_confs: optional set of conference abbreviations to scrape.
+                    If None, scrapes all conferences.
+
     Returns DataFrame with columns: year, conference, postseason_champion
     """
     import time
     all_data = []
 
-    for conf_abbr, slug in CONFERENCE_SLUG_MAPPING.items():
+    confs_to_scrape = {k: v for k, v in CONFERENCE_SLUG_MAPPING.items()
+                       if only_confs is None or k in only_confs}
+
+    for conf_abbr, slug in confs_to_scrape.items():
         time.sleep(3)  # rate limit: sports-reference blocks rapid requests
         url = f"https://www.sports-reference.com/cbb/conferences/{slug}/men/{year}.html"
         try:
